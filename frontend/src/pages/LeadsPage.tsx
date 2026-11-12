@@ -22,7 +22,6 @@ interface Filters {
   q: string
   status: string
   sort: string
-  needs_review: boolean
 }
 
 const EMPTY_FILTERS: Filters = {
@@ -33,7 +32,6 @@ const EMPTY_FILTERS: Filters = {
   q: '',
   status: '',
   sort: '',
-  needs_review: false,
 }
 
 function filterParams(f: Filters): Record<string, string | number | undefined> {
@@ -45,7 +43,6 @@ function filterParams(f: Filters): Record<string, string | number | undefined> {
     q: f.q || undefined,
     status: f.status || undefined,
     sort: f.sort || undefined,
-    needs_review: f.needs_review ? 'true' : undefined,
   }
 }
 
@@ -262,6 +259,17 @@ export default function LeadsPage() {
           }}
           aria-label="Country"
         />
+        <label className="filter-check">
+          <input
+            type="checkbox"
+            checked={filters.country.trim().toUpperCase() === 'US'}
+            onChange={(e) => {
+              setFilters({ ...filters, country: e.target.checked ? 'US' : '' })
+              setOffset(0)
+            }}
+          />
+          US only
+        </label>
         <input
           type="number"
           min={0}
@@ -299,17 +307,7 @@ export default function LeadsPage() {
             </option>
           ))}
         </select>
-        <label className="filter-check">
-          <input
-            type="checkbox"
-            checked={filters.needs_review}
-            onChange={(e) => {
-              setFilters({ ...filters, needs_review: e.target.checked })
-              setOffset(0)
-            }}
-          />
-          Needs review only
-        </label>
+
         <button
           className="btn btn-ghost"
           onClick={() => {
