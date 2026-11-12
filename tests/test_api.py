@@ -129,6 +129,32 @@ class TestExport:
         assert len(body["items"]) == 1
         assert "Nova Home" in str(body["items"][0])
 
+    def test_needs_review_filter(self, api_client, authed_headers):
+        """Flag one seeded lead as needs_review; the list AND the export
+        must return exactly that lead and nothing else."""
+        import sqlite3
+
+        client, _ = api_client
+        db_path = _seed_or_skip(api_client)
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "UPDATE leads SET needs_review = 1 WHERE brand_id IN "
+            "(SELECT id FROM brands WHERE name = 'KitchenPro')"
+        )
+        conn.commit()
+        conn.close()
+        resp = client.get("/api/leads?needs_review=true", headers=authed_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 1
+        assert "KitchenPro" in str(body["items"][0])
+        assert "Nova Home" not in str(body["items"])
+        exp = client.get("/api/leads/export?format=csv&needs_review=true",
+                         headers=authed_headers)
+        assert exp.status_code == 200
+        assert "KitchenPro" in exp.text
+        assert "Nova Home" not in exp.text
+
 
 class TestDryRun:
     def test_dry_run_completes_and_writes_run_row_and_summary(
