@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PL Hunter — Capture</title>
+    <style>
+      body { font-family: system-ui, sans-serif; font-size: 14px; margin: 0; padding: 16px; color: #1a1a1a; }
+      h1 { font-size: 16px; margin: 0 0 4px; }
+      p { color: #6b7280; }
+      label { display: block; font-weight: 600; font-size: 13px; margin: 12px 0 4px; }
+      input { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font: inherit; }
+      button { margin-top: 12px; width: 100%; padding: 9px; border: none; border-radius: 6px; background: #1a56db; color: #fff; font: inherit; cursor: pointer; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      .status { margin-top: 12px; padding: 10px; border-radius: 6px; background: #f3f4f6; white-space: pre-wrap; word-break: break-word; }
+      .status.error { background: #fef2f2; color: #b91c1c; }
+      .status.ok { background: #f0fdf4; color: #166534; }
+      .link { display: block; margin-top: 12px; color: #1a56db; }
+      details { margin-top: 16px; font-size: 13px; color: #4b5563; }
+      details input { margin-top: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1>PL Hunter — Capture</h1>
+    <p>Paste an ASIN or an Amazon product URL. It is queued for audit on the server — nothing is scraped from this panel.</p>
+    <form id="capture-form">
+      <label for="asin-input">ASIN or Amazon URL</label>
+      <input id="asin-input" type="text" placeholder="B0XXXXXXXX or https://www.amazon.com/dp/…" autocomplete="off" />
+      <button id="capture-btn" type="submit">Capture for audit</button>
+    </form>
+    <div id="status" class="status" hidden></div>
+    <a id="dashboard-link" class="link" href="http://localhost:8000/" target="_blank" hidden>Open in dashboard →</a>
+    <details>
+      <summary>Settings</summary>
+      <label for="token-input">API token</label>
+      <input id="token-input" type="password" placeholder="PLH_API_TOKEN" autocomplete="off" />
+      <button id="save-token-btn" type="button">Save token</button>
+      <label for="origin-input">Backend origin</label>
+      <input id="origin-input" type="text" value="http://localhost:8000" />
+      <button id="save-origin-btn" type="button">Save origin</button>
+    </details>
+    <script src="sidepanel.js"></script>
+  </body>
+</html>
