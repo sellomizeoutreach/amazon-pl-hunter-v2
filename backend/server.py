@@ -137,9 +137,11 @@ def _lead_out(lead: Lead) -> dict:
 
 
 def _apply_lead_filters(query, *, persona=None, contact_quality=None, country=None,
-                        max_reviews=None, q=None, status=None):
+                        max_reviews=None, q=None, status=None, needs_review=None):
     if persona:
         query = query.filter(Lead.persona == persona)
+    if needs_review is True:
+        query = query.filter(Lead.needs_review.is_(True))
     if contact_quality:
         query = query.filter(Lead.contact_quality == contact_quality)
     if country:
@@ -197,13 +199,15 @@ def stats():
 def list_leads(persona: str | None = None, contact_quality: str | None = None,
                country: str | None = None, max_reviews: int | None = None,
                q: str | None = None, status: str | None = None,
+               needs_review: bool | None = None,
                sort: str = "newest", limit: int = Query(50, ge=1, le=200),
                offset: int = Query(0, ge=0)):
     session = get_session()
     try:
         query = session.query(Lead)
         query = _apply_lead_filters(query, persona=persona, contact_quality=contact_quality,
-                                    country=country, max_reviews=max_reviews, q=q, status=status)
+                                    country=country, max_reviews=max_reviews, q=q, status=status,
+                                    needs_review=needs_review)
         total = query.count()
         if sort == "reviews_asc":
             query = query.join(Asin, Lead.asin_id == Asin.id, isouter=True).order_by(Asin.reviews.asc())
@@ -243,13 +247,15 @@ def patch_lead(lead_id: int, body: LeadPatch):
 def export_leads(format: str = Query("csv", pattern="^(csv|xlsx)$"),
                  persona: str | None = None, contact_quality: str | None = None,
                  country: str | None = None, max_reviews: int | None = None,
-                 q: str | None = None, status: str | None = None):
+                 q: str | None = None, status: str | None = None,
+                 needs_review: bool | None = None):
     """EXACTLY the filtered rows (never the whole job)."""
     session = get_session()
     try:
         query = session.query(Lead)
         query = _apply_lead_filters(query, persona=persona, contact_quality=contact_quality,
-                                    country=country, max_reviews=max_reviews, q=q, status=status)
+                                    country=country, max_reviews=max_reviews, q=q, status=status,
+                                    needs_review=needs_review)
         rows = [_lead_out(l) for l in query.order_by(Lead.id.desc()).all()]
     finally:
         session.close()
