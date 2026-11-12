@@ -1,0 +1,10 @@
+# Test-only dependencies for Amazon PL Hunter v2.
+# Install with: pip install -r tests/requirements-test.txt
+# (Backend runtime deps live in requirements.txt, owned by the backend agent.)
+pytest>=8
+beautifulsoup4
+httpx
+fastapi
+sqlalchemy
+email-validator
+dnspython
