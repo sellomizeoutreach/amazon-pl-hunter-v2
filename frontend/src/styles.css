@@ -127,6 +127,7 @@ input, select {
   margin-bottom: 0.75rem;
 }
 .filters input[type="search"] { flex: 1 1 220px; }
+.filter-check { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; }
 
 .table-toolbar {
   display: flex;
