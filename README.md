@@ -68,6 +68,7 @@ pytest -q                                    # 61 passed, 1 skipped, offline
 | `SERPAPI_API_KEY` | no | When set, live runs use SerpApi (see "SerpApi live mode"); when unset, live runs scrape Amazon directly |
 | `SERPAPI_MAX_SEARCHES_PER_RUN` / `SERPAPI_MAX_PRODUCTS_PER_RUN` | no | Defaults 120 / 60; hitting either ends the run gracefully with `serpapi_budget_hit: true` |
 | `PLH_BATCH_MIN_LEADS` | no | Default 100 — unsent live leads needed before the batch CSV email goes out (see "Lead batch emails") |
+| `PLH_US_ONLY` | no | Default `1` — whole-pipeline US-only gate: hunts keep only US sellers, the batch counts/sends only US leads. Set `0` to allow non-US |
 | `BREVO_API_KEY` / `BREVO_SENDER` / `BREVO_RECEIVER` | no | Needed for the batch email; without them, batches stay pending and run summaries are local HTML only |
 | `PLH_LOG_LEVEL` | no | Default `INFO`; logs go to stderr, stdout stays clean for JSON |
 
@@ -178,7 +179,7 @@ origin in the panel settings first. Not load-tested in a live Chrome yet
 - **Live hunting has never run against real Amazon** — only dry-run + fixtures. The first live run (2026-11-12, run 7) never reached Amazon: direct scraping is blocked from this VM (503 / shadowban page) and the cloud browser only gets Amazon's error page. The SerpApi path is now built (see "SerpApi live mode") but has had zero live calls — it needs a real `SERPAPI_API_KEY` and a first watched run: searches used, keyword quality, lead precision (hand-check 20–30 leads before trusting it).
 - **SP-API eligibility** — SP-API is verification-only; it cannot do unauthenticated competitor discovery. If Sellomize can get SP-API access it strengthens verification, but scraping (or a paid SERP/data provider) remains the discovery engine.
 - **Paid data/enrichment** — SerpApi / Keepa / Hunter / Apollo / Crustdata credits are all optional; the build spends $0 by default and only uses free paths (DDGS, MX checks). Decide a per-lead budget before enabling paid enrichment for top leads.
-- **GitHub Action** — the workflow exists (`.github/workflows/daily_hunt.yml`) but has not run in CI; the DB artifact download/upload pair is what makes dedup persist, and it needs one real Actions run to prove.
+- **GitHub Action** — the workflow file (`.github/workflows/daily_hunt.yml`) exists locally only and is NOT in the repo yet (verified 2026-11-12 ~10:58 UTC: no `.github` folder on main); it must be uploaded via the web UI plus the `PLH_LIVE=1` repo secret before it can run in CI. The DB artifact download/upload pair is what makes dedup persist, and it needs one real Actions run to prove.
 - **Extension** — needs a real Chrome load test (manifest + JS verified statically only).
 - **Known wart (non-blocking):** `POST /api/runs` runs the hunt synchronously in-process and returns 202 after completion (the DB-job design supports moving it to a background task later). Rate limiting is in-memory per token, not distributed.
 
