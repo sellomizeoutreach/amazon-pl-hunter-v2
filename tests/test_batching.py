@@ -40,12 +40,12 @@ def _batch_session(tmp_path, name="batch_test.db"):
     return db.get_session()
 
 
-def _seed_lead(session, i, source="auto_hunt", run_id=1):
+def _seed_lead(session, i, source="auto_hunt", run_id=1, country="US"):
     """One deterministic live (or dry-run) lead via the real save_lead."""
     from backend.pipeline import save_lead
     return save_lead(
         session, brand_name=f"Batch Brand {i}", seller_id=f"A9BATCH{i:04d}",
-        seller_name=f"Batch Brand {i}", seller_country="US",
+        seller_name=f"Batch Brand {i}", seller_country=country,
         country_confidence=0.9, score=0.9, reason="test",
         asin_data={"asin": f"B0T{i:07d}", "title": f"Batch Product {i}",
                    "reviews": i % 90, "rating": 4.5, "price": "$19.99",
@@ -159,6 +159,20 @@ def test_dry_run_leads_never_counted(tmp_path, monkeypatch, _brevo_env):
         assert unsent_live_leads(session) == []
         assert maybe_send_batch(session, new_leads_this_run=150) == "batch_pending"
         assert fake.calls == [], "150 dry-run leads must never trigger a batch email"
+    finally:
+        session.close()
+
+
+def test_non_us_leads_never_counted(tmp_path, monkeypatch, _brevo_env):
+    """US-only gate (Jack, 2026-11-16): a GB lead never counts toward the
+    batch; with PLH_US_ONLY=0 it counts again."""
+    session = _batch_session(tmp_path)
+    try:
+        _seed_lead(session, 0, country="US")
+        _seed_lead(session, 1, country="GB")
+        assert [l.brand.seller_country for l in unsent_live_leads(session)] == ["US"]
+        monkeypatch.setenv("PLH_US_ONLY", "0")
+        assert sorted(l.brand.seller_country for l in unsent_live_leads(session)) == ["GB", "US"]
     finally:
         session.close()
 
