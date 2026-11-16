@@ -330,6 +330,41 @@ def test_no_seller_block_lead_saved_with_needs_review(tmp_path):
     assert values == ("aurora peak", True, "serpapi")
 
 
+def test_known_non_us_country_dropped(tmp_path):
+    """US-only gate (Jack, 2026-11-16): a SerpApi candidate with a KNOWN
+    non-US seller country is dropped — no lead saved."""
+    from backend.db import Lead
+    from backend.runner import _serpapi_hunt
+    session = _serpapi_session(tmp_path)
+    try:
+        stub = _good_stub()
+        stub.products["B0GOOD0001"]["seller_country"] = "GB"
+        result = _serpapi_hunt(session, _run_row(session), ["diffuser"], client=stub)
+        count = session.query(Lead).count()
+    finally:
+        session.close()
+    assert result["leads_new"] == 0
+    assert count == 0, "a GB lead must not reach the queue under the US-only gate"
+
+
+def test_us_country_lead_saved(tmp_path):
+    """US-only gate: a US candidate is saved normally, not flagged."""
+    from backend.db import Lead
+    from backend.runner import _serpapi_hunt
+    session = _serpapi_session(tmp_path)
+    try:
+        stub = _good_stub()
+        stub.products["B0GOOD0001"]["seller_country"] = "US"
+        stub.products["B0GOOD0001"]["country_confidence"] = 0.9
+        result = _serpapi_hunt(session, _run_row(session), ["diffuser"], client=stub)
+        lead = session.query(Lead).one()
+        values = (lead.brand.seller_country, lead.needs_review, lead.source)
+    finally:
+        session.close()
+    assert result["leads_new"] == 1
+    assert values == ("US", False, "serpapi")
+
+
 def test_fail_closed_catalogue_on_brand_search_failure(tmp_path):
     from backend.db import Lead
     from backend.runner import _serpapi_hunt
