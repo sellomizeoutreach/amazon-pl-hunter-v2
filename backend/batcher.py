@@ -25,7 +25,7 @@ import os
 from datetime import date, datetime, timezone
 
 from backend import get_logger
-from backend.db import Lead, Run
+from backend.db import Brand, Lead, Run
 from backend.mailer import brevo_configured, send_brevo_email
 
 log = get_logger(__name__)
@@ -42,6 +42,14 @@ BATCH_CSV_COLUMNS = [
 ]
 
 
+def us_only() -> bool:
+    """PLH_US_ONLY (default 1): whole-pipeline US-only gate (Jack,
+    2026-11-16). When on, hunts keep only US sellers and the batch
+    counts/sends only US leads, so the first CSV is US-only. Set
+    PLH_US_ONLY=0 to allow non-US leads again."""
+    return os.environ.get("PLH_US_ONLY", "1").strip() != "0"
+
+
 def batch_threshold() -> int:
     """PLH_BATCH_MIN_LEADS (default 100); invalid values fall back to 100."""
     try:
@@ -53,11 +61,15 @@ def batch_threshold() -> int:
 
 def unsent_live_leads(session) -> list[Lead]:
     """Unsent leads from real live runs, oldest first (deterministic
-    batch order). Dry-run / fixture leads are excluded by source."""
-    return (session.query(Lead)
-            .filter(Lead.source.in_(LIVE_SOURCES), Lead.batch_sent_at.is_(None))
-            .order_by(Lead.id)
-            .all())
+    batch order). Dry-run / fixture leads are excluded by source.
+    When the US-only gate is on, only leads whose brand's seller
+    country is US count — UNKNOWN-country needs_review leads stay
+    in the review queue and never reach the batch CSV."""
+    query = (session.query(Lead)
+             .filter(Lead.source.in_(LIVE_SOURCES), Lead.batch_sent_at.is_(None)))
+    if us_only():
+        query = query.join(Brand).filter(Brand.seller_country == "US")
+    return query.order_by(Lead.id).all()
 
 
 def build_batch_csv(leads: list[Lead]) -> str:
