@@ -1,0 +1,53 @@
+name: Daily PL Hunt
+
+on:
+  schedule:
+    - cron: "0 8 * * *"  # 08:00 UTC
+  workflow_dispatch:
+
+jobs:
+  hunt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Download the persisted DB BEFORE the run (first run: no artifact yet,
+      # so continue-on-error). This is what fixes the v1 dedup bug — the
+      # seen-brands/seller_id state survives across runs.
+      - name: Download persisted DB
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: plhunter-db
+          path: data
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run hunt
+        env:
+          PLH_LIVE: ${{ secrets.PLH_LIVE }}
+          PLH_API_TOKEN: ${{ secrets.PLH_API_TOKEN }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_SENDER: ${{ secrets.BREVO_SENDER }}
+          BREVO_RECEIVER: ${{ secrets.BREVO_RECEIVER }}
+        run: |
+          if [ "$PLH_LIVE" = "1" ]; then
+            python scripts/run_hunt.py --mode live
+          else
+            python scripts/run_hunt.py --mode dry
+          fi
+
+      # Upload the DB AFTER the run, always — even on failure — so the next
+      # run resumes from the latest state.
+      - name: Upload persisted DB
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plhunter-db
+          path: data/plhunter.db
+          retention-days: 90
