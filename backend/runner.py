@@ -18,7 +18,7 @@ from pathlib import Path
 from backend import get_logger
 from backend.db import Asin, Brand, Keyword, Lead, Run, get_session, init_db
 from backend.keywords import generate_keywords
-from backend.batcher import maybe_send_batch
+from backend.batcher import maybe_send_batch, us_only
 from backend.mailer import write_summary_locally
 from backend.pipeline import (
     audit_catalogue, create_job, enrich_brand, normalise_brand,
@@ -240,6 +240,11 @@ def _process_asin(session, run: Run, prod: dict, scraper: Scraper):
     if not is_non_cn(seller_country):
         set_stage(session, job, "seller", "done", {"skipped": "country_not_non_cn", "country": seller_country})
         return None
+    # US-ONLY (Jack, 2026-11-16): whole-pipeline gate — only US sellers
+    # reach the lead queue. UNKNOWN never gets here (excluded above).
+    if us_only() and seller_country != "US":
+        set_stage(session, job, "seller", "done", {"skipped": "country_not_us", "country": seller_country})
+        return None
     set_stage(session, job, "catalogue", "running")
     catalog_items = [{"asin": prod["asin"], "reviews": pdp.get("reviews", prod.get("reviews", 0))}]
     try:
@@ -430,6 +435,14 @@ def _process_serpapi_asin(session, run: Run, prod: dict, client: SerpApiClient):
     if seller_country in ("CN", "HK"):
         set_stage(session, job, "seller", "done",
                   {"skipped": "country_cn_hk", "country": seller_country})
+        return None
+    # US-ONLY (Jack, 2026-11-16): a KNOWN non-US country is dropped,
+    # like CN/HK above. UNKNOWN stays: saved as needs_review for Jack's
+    # hand-check, but the batcher never sends non-US leads, so the
+    # batch CSV stays US-only.
+    if us_only() and seller_country not in ("US", "UNKNOWN"):
+        set_stage(session, job, "seller", "done",
+                  {"skipped": "country_not_us", "country": seller_country})
         return None
     set_stage(session, job, "seller", "done", {"country": seller_country})
     set_stage(session, job, "enrich", "running")
